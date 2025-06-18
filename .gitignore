@@ -1,4 +1,6 @@
+# Ignore IDE folder
 .vs/
-.vs/
-.vs/
-.vs/
+
+# Ignore build outputs
+**/bin/
+**/obj/
