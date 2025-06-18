@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.0.0-beta.2" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.18.0-rc" />
+    <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.18.0-rc" />
+    <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.9.0-alpha" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GDC.Copilio.Common\GDC.Copilio.Common.csproj" />
+    <ProjectReference Include="..\GDC.Copilio.Entities\GDC.Copilio.Entities.csproj" />
+    <ProjectReference Include="..\GDC.Copilio.Schema\GDC.Copilio.Schema.csproj" />
+  </ItemGroup>
+
+</Project>
