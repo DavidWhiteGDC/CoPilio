@@ -25,11 +25,15 @@ builder.Services.AddScoped<Kernel>(sp =>
 
     return kernel;
 });
+builder.Services.AddHttpClient<IWebScraperService, AngleSharpWebScraperService>();
 
 builder.Services.AddScoped<IChatCompletionService>(sp =>
 {
+    // 1) Resolve the Kernel you registered
     var kernel = sp.GetRequiredService<Kernel>();
-    return kernel.GetRequiredService<IChatCompletionService>();
+    // 2) From *its* IServiceProvider, get the chat-completion service
+    return kernel.Services
+                 .GetRequiredService<IChatCompletionService>();
 });
 
 builder.Services.AddControllers();
