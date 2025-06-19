@@ -34,7 +34,16 @@ builder.Services.AddScoped<IChatCompletionService>(sp =>
 
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ConversationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,                           // retry up to 5 times
+            maxRetryDelay: TimeSpan.FromSeconds(30),    // wait up to 30 s between retries
+            errorNumbersToAdd: null                     // or a list of additional SQL error codes
+        )
+    )
+);
+
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
