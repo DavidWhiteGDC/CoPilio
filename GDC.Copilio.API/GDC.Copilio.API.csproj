@@ -21,7 +21,11 @@
     <PackageReference Include="Twilio.AspNet.Common" Version="8.0.2" />
     <PackageReference Include="Twilio.AspNet.Core" Version="8.0.2" />
   </ItemGroup>
-
+  <ItemGroup>
+  <Content Include="Documents/wm_county_support 1.md">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </Content>
+</ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GDC.Copilio.Business\GDC.Copilio.Business.csproj" />
     <ProjectReference Include="..\GDC.Copilio.Common\GDC.Copilio.Common.csproj" />

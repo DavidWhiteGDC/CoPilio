@@ -1,51 +1,40 @@
 ﻿using Azure.Core;
 using GDC.Copilio.Business.Abstractions;
+using GDC.Copilio.Business.Plugins;
+using GDC.Copilio.Common;
 using GDC.Copilio.Entities.Models;
 using GDC.Copilio.Schema;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using GDC.Copilio.Common;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using System;
-using Microsoft.SemanticKernel.Plugins.Web.Bing;
-using Microsoft.SemanticKernel.Plugins.Web;
-
 
 namespace GDC.Copilio.Business
 {
-    public class ConversationService : IConversationService 
+    public class ConversationService : IConversationService
     {
-        
         private readonly IChatCompletionService _chatService;
         private readonly Kernel _kernel;
         private readonly ConversationDbContext _context;
-   
+        private readonly string _documentPath;
 
         // Initiate Chat Service and DB Context connection
-        public ConversationService(IChatCompletionService chatService, Kernel kernel, ConversationDbContext context)
+        public ConversationService(IChatCompletionService chatService, Kernel kernel, ConversationDbContext context, IConfiguration configuration)
         {
             Util.Gaurd.ArgumentIsNotNull(chatService, nameof(_chatService));
             Util.Gaurd.ArgumentIsNotNull(kernel, nameof(_kernel));
             Util.Gaurd.ArgumentIsNotNull(context, nameof(_context));
-            
-      
+
             _chatService = chatService;
             _kernel = kernel;
             _context = context;
-        
+            _documentPath = configuration["SupportDocumentPath"] ?? "Documents/wm_county_support 1.md";
         }
-
-
 
         public async Task<ChatMessageContent> ConversationHandler(ChatRequestPayload request)
         {
-
-           
-           
-        //    Util.Gaurd.ArgumentIsNotNull(request, nameof(request));
-           
             // Creation and Authentication of User Conversation History
             var conversation = await _context.ConversationMemory.FindAsync(request.Id);
 
@@ -53,12 +42,12 @@ namespace GDC.Copilio.Business
             {
                 conversation = new Conversation
                 {
-                    Id =request.Id,
+                    Id = request.Id,
                     UserMessage = request.UserMessage,
                     BotResponse = string.Empty,
                     Timestamp = DateTime.UtcNow
                 };
-               _context.ConversationMemory.Add(conversation);
+                _context.ConversationMemory.Add(conversation);
             }
             else
             {
@@ -69,16 +58,29 @@ namespace GDC.Copilio.Business
 
             await _context.SaveChangesAsync();
 
+            // Import Document Reader plugin
+            var documentPlugin = new DocumentReaderPlugin(_documentPath);
+            _kernel.ImportPluginFromObject(documentPlugin, "DocumentPlugin");
 
-            var bingConnector = new BingConnector("f960d51145354a3b8f38edcfbec89da5");
-            var plugin = new WebSearchEnginePlugin(bingConnector);
-            _kernel.ImportPluginFromObject(plugin, "BingPlugin");
-
-            // Initilaizes Semantic Kernel and returns Response
-
-
+            // Initialize Semantic Kernel and return Response
             var chat = new ChatHistory();
-            chat.AddSystemMessage("You are a strict web-scraping assistant for https://www.westmorelandcountypa.gov/ and ONLY its pages and linked documents.\r\n\r\n1. On each user request, load the site’s homepage or relevant section (e.g. “Voting”).\r\n2. Find the <a> whose link text most closely matches the user’s question.\r\n3. Fetch that page, extract *all* visible text (including URLs, email addresses, and phone numbers).\r\n4. Return *only* that scraped text. Do not summarize—return verbatim.\r\n5. If no matching link exists, reply: “That is out of the scope of my abilities.”\r\n");
+            chat.AddSystemMessage(
+                @"You are a helpful AI assistant for Westmoreland County technical support.
+
+Your primary role is to help users with technical issues by providing information from the support documentation.
+
+When a user asks a question:
+1. Use the DocumentPlugin to search for relevant information in the support documentation
+2. If the user specifically asks for escalation or if you cannot solve their issue, use the HandleEscalation function
+3. Always be helpful, clear, and follow the step-by-step instructions from the documentation
+4. If you cannot find relevant information, politely let them know and offer escalation
+
+Key behaviors:
+- For network/connectivity issues, provide the troubleshooting steps from the documentation
+- If users ask to escalate or need further help, use the escalation function
+- Be conversational but professional
+- Focus on solving their technical problems efficiently"
+            );
 
             chat.AddUserMessage(request.UserMessage);
 
@@ -89,9 +91,13 @@ namespace GDC.Copilio.Business
 
             var response = await _chatService.GetChatMessageContentAsync(chat, settings, _kernel);
             chat.Add(response);
+
+            // Update conversation with bot response
+            conversation.BotResponse = response.Content ?? string.Empty;
+            _context.ConversationMemory.Update(conversation);
+            await _context.SaveChangesAsync();
+
             return response;
         }
-
-        
     }
 }
